@@ -169,6 +169,24 @@ class App {
     }
   };
 
+  getTechnicianLoad = async (req, res) => {
+    this.logger.info('Get technician load endpoint was called');
+    const { technicianId } = req.params;
+
+    if (!technicianId) {
+      sendResponse(res, req, 400, null, 'Technician ID is required', null, this.logger);
+      return;
+    }
+
+    try {
+      const currentLoad = await this.technicianService.calculateCurrentLoad(technicianId);
+      sendResponse(res, req, 200, { currentLoad }, 'Technician load retrieved', null, this.logger);
+    } catch (err) {
+      this.handleError(res, req, err, 'Failed to get technician load');
+      return;
+    }
+  };
+
   handleError(res, req, err, defaultMessage) {
     this.logger.error(`Error in request: ${err.message}`, { stack: err.stack });
 
@@ -197,6 +215,7 @@ class App {
 
     this.app.post('/api/v1/technicians/:technicianId/tickets', this.addTicketToTechnician);
     this.app.get('/api/v1/technicians/:technicianId/tickets', this.getTicketsByTechnicianId);
+    this.app.get('/api/v1/technicians/:technicianId/load', this.getTechnicianLoad);
     this.app.delete('/api/v1/tickets/:ticketId', this.removeTicket);
     this.app.post('/api/v1/tickets/:ticketId/move', this.moveTicket);
 

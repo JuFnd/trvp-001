@@ -4,34 +4,28 @@ let technicians = [];
 let complexityLevels = [];
 
 document.addEventListener('DOMContentLoaded', async () => {
-  await loadComplexityLevels();
   await refreshApp();
   setupEventListeners();
 });
 
 async function refreshApp() {
-  await loadTechnicians();
-}
-
-async function loadComplexityLevels() {
   try {
-    const res = await fetch(`${API_BASE}/complexity-levels`);
-    if (!res.ok) throw new Error('Не удалось загрузить уровни сложности');
-    const response = await res.json();
-    complexityLevels = response.data;
-    populateComplexitySelects();
-  } catch (err) {
-    showNotification('❌ Ошибка', err.message, 'danger');
-  }
-}
+    const resLevels = await fetch(`${API_BASE}/complexity-levels`);
+    if (!resLevels.ok) throw new Error('Не удалось загрузить уровни сложности');
+    const responseLevels = await resLevels.json();
+    complexityLevels = responseLevels.data;
 
-async function loadTechnicians() {
-  try {
-    const res = await fetch(`${API_BASE}/technicians`);
-    if (!res.ok) throw new Error('Не удалось загрузить мастеров');
-    const response = await res.json();
-    technicians = response.data;
+    const resTechs = await fetch(`${API_BASE}/technicians`);
+    if (!resTechs.ok) throw new Error('Не удалось загрузить мастеров');
+    const responseTechs = await resTechs.json();
+    technicians = responseTechs.data;
+
     renderTechnicians();
+    for (const tech of technicians) {
+      await loadTicketsForTechnician(tech.id);
+    }
+
+    populateComplexitySelects();
   } catch (err) {
     showNotification('❌ Ошибка', err.message, 'danger');
   }
@@ -72,7 +66,7 @@ function renderTechnicians() {
   technicians.forEach(tech => {
     const col = document.createElement('div');
     col.className = 'col-md-6 col-lg-4';
-    
+
     col.innerHTML = `
       <div class="technician-card p-3" data-tech-id="${tech.id}">
         <div class="d-flex justify-content-between align-items-start">
@@ -89,14 +83,10 @@ function renderTechnicians() {
             </button>
           </div>
         </div>
-        
+
         <div class="mt-3">
-          <div class="d-flex justify-content-between mb-1">
-            <small class="load-text">Нагрузка: 0/10</small>
-            <small>0%</small>
-          </div>
-          <div class="load-bar success">
-            <div class="load-bar-fill" style="width: 0%"></div>
+          <div class="progress mb-2">
+            <div class="progress-bar" role="progressbar" style="width: 0%" aria-valuenow="0" aria-valuemin="0" aria-valuemax="10"></div>
           </div>
         </div>
 
@@ -105,15 +95,43 @@ function renderTechnicians() {
         <div class="tickets-list" id="tickets-${tech.id}">
           <em>Загрузка заявок...</em>
         </div>
-        
+
         <button class="btn btn-sm btn-success w-100 mt-2 add-ticket" data-id="${tech.id}">
           <i class="bi bi-plus"></i> Новая заявка
         </button>
       </div>
     `;
     container.appendChild(col);
-    loadTicketsForTechnician(tech.id);
+
+    fetchTechnicianLoad(tech.id).then(currentLoad => {
+      updateProgressBar(tech.id, currentLoad);
+    });
   });
+}
+
+async function fetchTechnicianLoad(technicianId) {
+  try {
+    const res = await fetch(`${API_BASE}/technicians/${technicianId}/load`);
+    if (!res.ok) throw new Error('Не удалось загрузить нагрузку');
+    const response = await res.json();
+    return response.data.currentLoad;
+  } catch (err) {
+    console.error(`Ошибка загрузки нагрузки для ${technicianId}:`, err.message);
+    return 0;
+  }
+}
+
+function updateProgressBar(technicianId, currentLoad) {
+  const card = document.querySelector(`.technician-card[data-tech-id="${technicianId}"]`);
+  if (!card) return;
+
+  const progressBar = card.querySelector('.progress-bar');
+  if (progressBar) {
+    const percent = Math.min(100, Math.round((currentLoad / 10) * 100));
+    progressBar.style.width = `${percent}%`;
+    progressBar.className = `progress-bar ${percent > 90 ? 'bg-danger' : percent > 70 ? 'bg-warning' : 'bg-success'}`;
+    progressBar.setAttribute('aria-valuenow', currentLoad);
+  }
 }
 
 async function loadTicketsForTechnician(technicianId) {
@@ -123,8 +141,11 @@ async function loadTicketsForTechnician(technicianId) {
     const response = await res.json();
     const tickets = response.data;
     renderTickets(technicianId, tickets);
+
+    const currentLoad = await fetchTechnicianLoad(technicianId);
+    updateProgressBar(technicianId, currentLoad);
   } catch (err) {
-    document.getElementById(`tickets-${technicianId}`).innerHTML = 
+    document.getElementById(`tickets-${technicianId}`).innerHTML =
       `<span class="text-danger">Ошибка: ${err.message}</span>`;
   }
 }
@@ -133,18 +154,14 @@ function renderTickets(technicianId, tickets) {
   const container = document.getElementById(`tickets-${technicianId}`);
   if (!container) return;
 
-  let totalLoad = 0;
-  
   if (tickets.length === 0) {
     container.innerHTML = '<em class="text-muted">Нет заявок.</em>';
   } else {
     let html = '';
     tickets.forEach(ticket => {
       const level = complexityLevels.find(l => l.id === ticket.complexity_level_id);
-      if (level) totalLoad += level.value;
-      
       const badgeClass = level ? `complexity-${level.id}` : 'complexity-simple';
-      
+
       html += `
         <div class="ticket-item" data-complexity="${ticket.complexity_level_id}">
           <div class="d-flex justify-content-between">
@@ -154,8 +171,8 @@ function renderTickets(technicianId, tickets) {
             </span>
           </div>
           <div class="mt-2">
-            <button class="btn btn-sm btn-warning move-ticket" 
-                    data-id="${ticket.id}" 
+            <button class="btn btn-sm btn-warning move-ticket"
+                    data-id="${ticket.id}"
                     data-tech-id="${technicianId}">
               <i class="bi bi-arrow-left-right"></i> Переместить
             </button>
@@ -167,27 +184,6 @@ function renderTickets(technicianId, tickets) {
       `;
     });
     container.innerHTML = html;
-  }
-
-  updateTechnicianLoadBar(technicianId, totalLoad);
-}
-
-function updateTechnicianLoadBar(technicianId, currentLoad) {
-  const card = document.querySelector(`.technician-card[data-tech-id="${technicianId}"]`);
-  if (!card) return;
-
-  const loadBarFill = card.querySelector('.load-bar-fill');
-  const loadText = card.querySelector('.load-text');
-  const percentText = card.querySelector('.mt-3 .d-flex .small:last-child');
-  
-  if (loadBarFill && loadText && percentText) {
-    const percent = Math.min(100, Math.round((currentLoad / 10) * 100));
-    const barClass = percent > 90 ? 'danger' : percent > 70 ? 'warning' : 'success';
-    
-    loadBarFill.style.width = `${percent}%`;
-    loadBarFill.parentElement.className = `load-bar ${barClass}`;
-    loadText.textContent = `Нагрузка: ${currentLoad}/10`;
-    percentText.textContent = `${percent}%`;
   }
 }
 
@@ -218,12 +214,12 @@ function setupEventListeners() {
     if (e.target.classList.contains('delete-technician') || e.target.closest('.delete-technician')) {
       const button = e.target.closest('.delete-technician') || e.target;
       const technicianId = button.dataset.id;
-      
+
       const confirmed = await showConfirmation(
-        'Удаление мастера', 
+        'Удаление мастера',
         'Вы уверены? Все заявки мастера будут удалены безвозвратно.'
       );
-      
+
       if (confirmed) {
         await deleteTechnician(technicianId);
       }
@@ -235,7 +231,7 @@ function setupEventListeners() {
       const button = e.target.closest('.edit-technician') || e.target;
       const technicianId = button.dataset.id;
       const technician = technicians.find(t => t.id === technicianId);
-      
+
       if (technician) {
         document.getElementById('technicianModalLabel').textContent = 'Редактировать мастера';
         document.getElementById('technicianId').value = technician.id;
@@ -250,7 +246,7 @@ function setupEventListeners() {
     if (e.target.classList.contains('remove-ticket') || e.target.closest('.remove-ticket')) {
       const button = e.target.closest('.remove-ticket') || e.target;
       const ticketId = button.dataset.id;
-      
+
       const confirmed = await showConfirmation('Удаление заявки', 'Удалить заявку?');
       if (confirmed) {
         await removeTicket(ticketId);
@@ -263,11 +259,11 @@ function setupEventListeners() {
       const button = e.target.closest('.move-ticket') || e.target;
       const ticketId = button.dataset.id;
       const currentTechId = button.dataset.techId;
-      
+
       document.getElementById('moveTicketId').value = ticketId;
       const targetSelect = document.getElementById('targetTechnicianId');
       targetSelect.innerHTML = '';
-      
+
       technicians
         .filter(t => t.id !== currentTechId)
         .forEach(tech => {
@@ -276,12 +272,12 @@ function setupEventListeners() {
           option.textContent = tech.full_name;
           targetSelect.appendChild(option);
         });
-        
+
       if (targetSelect.options.length === 0) {
         showNotification('ℹ️ Информация', 'Нет других мастеров для перемещения', 'info');
         return;
       }
-      
+
       const modal = new bootstrap.Modal(document.getElementById('moveTicketModal'));
       modal.show();
     }
@@ -351,7 +347,9 @@ async function addTicket() {
     }
 
     bootstrap.Modal.getInstance(document.getElementById('ticketModal')).hide();
+
     await loadTicketsForTechnician(technicianId);
+
     showNotification('✅ Успех', 'Заявка добавлена!', 'success');
   } catch (err) {
     showNotification('❌ Ошибка', err.message, 'danger');
@@ -379,7 +377,17 @@ async function removeTicket(ticketId) {
       const errorMsg = await parseApiError(res);
       throw new Error(errorMsg);
     }
-    await refreshApp();
+
+    const ticketElement = document.querySelector(`.remove-ticket[data-id="${ticketId}"]`);
+    if (ticketElement) {
+      const technicianCard = ticketElement.closest('.technician-card');
+      const technicianId = technicianCard?.dataset.techId;
+
+      if (technicianId) {
+        await loadTicketsForTechnician(technicianId);
+      }
+    }
+
     showNotification('✅ Успех', 'Заявка удалена.', 'success');
   } catch (err) {
     showNotification('❌ Ошибка', err.message, 'danger');
@@ -408,7 +416,14 @@ async function moveTicket() {
     }
 
     bootstrap.Modal.getInstance(document.getElementById('moveTicketModal')).hide();
-    await refreshApp();
+
+    const ticketElement = document.querySelector(`.move-ticket[data-id="${ticketId}"]`);
+    if (ticketElement) {
+      const currentTechId = ticketElement.dataset.techId;
+      await loadTicketsForTechnician(currentTechId);
+      await loadTicketsForTechnician(targetTechnicianId);
+    }
+
     showNotification('✅ Успех', 'Заявка перемещена.', 'success');
   } catch (err) {
     showNotification('❌ Ошибка', err.message, 'danger');
@@ -426,33 +441,33 @@ async function parseApiError(response) {
 
 function showNotification(title, message, type = 'info') {
   const toastContainer = document.getElementById('notifications');
-  
+
   const typeConfig = {
     success: { bg: 'bg-success', icon: '✅' },
     danger: { bg: 'bg-danger', icon: '❌' },
     warning: { bg: 'bg-warning', text: 'text-dark', icon: '⚠️' },
     info: { bg: 'bg-info', text: 'text-white', icon: 'ℹ️' }
   };
-  
+
   const config = typeConfig[type] || typeConfig.info;
-  
+
   const toastEl = document.createElement('div');
   toastEl.className = `toast ${config.bg} ${config.text || ''} show`;
   toastEl.setAttribute('role', 'alert');
   toastEl.setAttribute('aria-live', 'assertive');
   toastEl.setAttribute('aria-atomic', 'true');
-  
+
   toastEl.innerHTML = `
     <div class="toast-header ${config.bg} ${config.text || ''}">
       <strong class="me-auto">${config.icon} ${title}</strong>
-      <button type="button" class="btn-close ${config.text ? 'btn-close-white' : ''}" 
+      <button type="button" class="btn-close ${config.text ? 'btn-close-white' : ''}"
               data-bs-dismiss="toast" aria-label="Close"></button>
     </div>
     <div class="toast-body">
       ${message}
     </div>
   `;
-  
+
   toastContainer.appendChild(toastEl);
 
   setTimeout(() => {
@@ -470,10 +485,10 @@ function showConfirmation(title, message) {
   return new Promise((resolve) => {
     document.getElementById('confirmationModalLabel').textContent = title;
     document.getElementById('confirmationModalMessage').textContent = message;
-    
+
     const modal = new bootstrap.Modal(document.getElementById('confirmationModal'));
     modal.show();
-    
+
     const confirmBtn = document.getElementById('confirmationConfirmBtn');
     const handleConfirm = () => {
       modal.hide();
@@ -483,9 +498,9 @@ function showConfirmation(title, message) {
       modal.hide();
       resolve(false);
     };
-    
+
     confirmBtn.onclick = handleConfirm;
-    
+
     document.getElementById('confirmationModal').addEventListener('hidden.bs.modal', () => {
       confirmBtn.onclick = null;
     });
