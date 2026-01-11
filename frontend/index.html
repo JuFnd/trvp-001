@@ -1,0 +1,124 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Личный кабинет менеджера ISP</title>
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.1/font/bootstrap-icons.css">
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <div class="container mt-4">
+    <h1 class="text-center mb-4">Управление мастерами и заявками</h1>
+
+    <div id="notifications" class="position-fixed top-0 end-0 p-3" style="z-index: 1050;"></div>
+
+    <div id="techniciansList" class="mb-5">
+      <div class="d-flex justify-content-between align-items-center mb-3">
+        <h2>Мастера</h2>
+        <button id="createTechnicianBtn" class="btn btn-primary">
+          <i class="bi bi-plus-circle"></i> Новый мастер
+        </button>
+      </div>
+      <div id="techniciansContainer" class="row"></div>
+    </div>
+  </div>
+
+  <div class="modal fade" id="technicianModal" tabindex="-1">
+    <div class="modal-dialog">
+      <div class="modal-content">
+        <div class="modal-header">
+          <h5 class="modal-title" id="technicianModalLabel">Новый мастер</h5>
+          <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+        </div>
+        <div class="modal-body">
+          <form id="technicianForm">
+            <input type="hidden" id="technicianId">
+            <div class="mb-3">
+              <label class="form-label">ФИО мастера</label>
+              <input type="text" class="form-control" id="fullName" required>
+            </div>
+          </form>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Отмена</button>
+          <button type="button" class="btn btn-primary" id="saveTechnicianBtn">Сохранить</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="modal fade" id="ticketModal" tabindex="-1">
+    <div class="modal-dialog">
+      <div class="modal-content">
+        <div class="modal-header">
+          <h5 class="modal-title">Новая заявка</h5>
+          <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+        </div>
+        <div class="modal-body">
+          <form id="ticketForm">
+            <input type="hidden" id="ticketTechnicianId">
+            <div class="mb-3">
+              <label class="form-label">Адрес подключения</label>
+              <input type="text" class="form-control" id="address" required>
+            </div>
+            <div class="mb-3">
+              <label class="form-label">Сложность заявки</label>
+              <select class="form-select" id="complexityLevelId" required></select>
+            </div>
+          </form>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Отмена</button>
+          <button type="button" class="btn btn-success" id="addTicketBtn">Добавить заявку</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="modal fade" id="moveTicketModal" tabindex="-1">
+    <div class="modal-dialog">
+      <div class="modal-content">
+        <div class="modal-header">
+          <h5 class="modal-title">Переместить заявку</h5>
+          <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+        </div>
+        <div class="modal-body">
+          <input type="hidden" id="moveTicketId">
+          <div class="mb-3">
+            <label class="form-label">Целевой мастер</label>
+            <select class="form-select" id="targetTechnicianId" required></select>
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Отмена</button>
+          <button type="button" class="btn btn-warning" id="moveTicketBtn">Переместить</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+
+<div class="modal fade" id="confirmationModal" tabindex="-1">
+  <div class="modal-dialog modal-dialog-centered">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title" id="confirmationModalLabel">Подтверждение</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+      </div>
+      <div class="modal-body" id="confirmationModalMessage">
+        Вы уверены?
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Отмена</button>
+        <button type="button" class="btn btn-danger" id="confirmationConfirmBtn">Подтвердить</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
+  <script src="app.js"></script>
+</body>
+</html>

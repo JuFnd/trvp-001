@@ -1,0 +1,4 @@
+service:
+  address: app
+  app_port: 5000
+  connection_type: tcp

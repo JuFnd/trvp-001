@@ -1,0 +1,52 @@
+.technician-card {
+  border-radius: 10px;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+  transition: transform 0.2s;
+  margin-bottom: 1.5rem;
+}
+
+.technician-card:hover {
+  transform: translateY(-3px);
+  box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+}
+
+.load-bar {
+  height: 8px;
+  background-color: #e9ecef;
+  border-radius: 4px;
+  overflow: hidden;
+  margin-top: 8px;
+}
+
+.load-bar-fill {
+  height: 100%;
+  border-radius: 4px;
+  transition: width 0.3s ease;
+}
+
+.load-bar.danger .load-bar-fill { background-color: #dc3545; }
+.load-bar.warning .load-bar-fill { background-color: #ffc107; }
+.load-bar.success .load-bar-fill { background-color: #198754; }
+
+.ticket-item {
+  background: white;
+  padding: 0.75rem;
+  margin: 0.5rem 0;
+  border-radius: 6px;
+  border-left: 4px solid #0d6efd;
+}
+
+.complexity-badge {
+  font-size: 0.85em;
+  padding: 0.35em 0.5em;
+}
+
+.complexity-simple { background-color: #d1ecf1; color: #0c5460; }
+.complexity-medium { background-color: #fff3cd; color: #856404; }
+.complexity-hard { background-color: #f8d7da; color: #721c24; }
+
+.toast {
+  min-width: 300px;
+  border-radius: 8px;
+  box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+}
